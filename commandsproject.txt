@@ -1,0 +1,86 @@
+
+
+hdfs dfs -put ham/ /tmp/ling-spam
+
+hdfs dfs -put spam/ /tmp/ling-spam
+
+
+hdfs dfs -ls /tmp/ling-spam/ham
+hdfs dfs -ls /tmp/ling-spam/spam
+
+val textFiles = sc.wholeTextFiles("/tmp/ling-spam/ham")
+
+
+val nbFiles = textFiles.count() // Long = 2412
+
+val valuesrdd = textFiles.values // to get the values of textFiles (as opposed to keys).
+
+val nonwords = List(".",":",",","-","/","(",")","@",":", "?")
+
+val words = textFiles.map({case (key, contents) => (key, contents.split(" ").distinct.filter(!nonwords.contains(_)).)})
+
+
+
+// val L = Array((1,Array("one", "two")), (2, Array("one", "three")))
+
+// val LL = L.map({case (s,Array(s1,s2))=>(s1,s2,1)})
+// val LLL = LL.flatMap({case (s1,s2,1)=>Array((s1,1), (s2,1))})
+// val L4 = sc.parallelize(LLL)
+// val L5 = L4.reduceByKey((a,b)=>a+b)
+
+
+—————————
+val L = Array((1,Array("one", "two", "one")), (2, Array("one", "three", "three")))
+val LL = L.map({case (s, contents) => (s, contents.map(s=>(s,1)))})
+
+val LL = L.map({case (s, contents) => (s, sc.parallelize(contents.map(s=>(s,1))).reduceByKey(_+_))})
+LL = Array((1,Array((one,1), (two,1), (one,1))), (2,Array((one,1), (three,1), (three,1))))
+
+
+4)
+—val L = Array((1,Array(one, two, one)), (2,Array(one, three, three)))
+-val LL = L.map{case (key, values) => (key, values.map(s=>(s,1)))}
+-LL = Array((1,Array((one,1), (two,1), (one,1))), (2,Array((one,1), (three,1), (three,1))))
+-val LLL = L.map{case (key, values) => (key, values.groupBy(identity).mapValues(_.size).toArray)}
+-LLL = Array((1,Array(((one,1),2), ((two,1),1))), (2,Array(((one,1),1), ((three,1),2))))
+-val L4 = LLL.map{case (key, values) => (key, values.map{case ((s,n),m) => (s,n.toFloat/(n+m))})}
+-Array((1,Array((one,0.5), (two,1.0))), (2,Array((one,1.0), (three,0.5))))
+
+
+5)
+
+P ( e in Ham U Spam) = P (e in Ham or e in Spam) = P(e in Ham) + P(e in Spam) = 1/2412 + 1/481
+
+computeMutualInformationFactor(true, ham) = P(true, ham) * log2(P(true, ham)/P(true)*P(ham))
+
+val L = Array((1,Array(one, two, one)), (2,Array(one, three, three)))
+val LL = words.map{case (key, values) => (key, values.map(s=>(s,1)))}
+val LLL = LL.map{case (key, values) => (key, values.map{case (s,1) => (s,1.0/values.size)})}
+
+
+** val L = Array((1,Array("one", "two", "three")), (2, Array("one", "three")))
+** val LL = L.flatMap({case (s,contents)=>(contents.map(s=>(s,1)))})
+
+val pairswords = words.flatMap({case (s,contents)=>(contents.map(s=>(s,1)))})
+val worddirOccurency = pairswords.reduceByKey((a,b)=>a+b)
+
+val probaWord = pairswords.map({case (s,l)=>(s,l, l.toFloat/nbFiles)})
+
+
+// Array((1,"one", "two"), (2, "one", "three"))
+
+
+
+// Array(("one",2), ("two",1), ("three",1))
+
+// Array((1,Array(Subject:, re, )), (2,Array(Subject:, s, >, np, +, np)), (3,Array(...)))
+
+  def log2(x: Double) : Double = scala.math.log(x) / scala.math.log(2) // Compute the log2 of a double.
+  def log2RDD(proba: RDD[(String, Double)]) : RDD[(String, Double)] = {
+      val temp = proba.map{case (key, values) => (key, log2(values))}
+      temp
+  }
+  
+      //val MIF = probaWC.union(log2RDD(probaWC.union(probaW).reduceByKey((a,b)=>a/(b*probaC))).reduceByKey((a,b)=>a*b))
+                               
+   // MIF
